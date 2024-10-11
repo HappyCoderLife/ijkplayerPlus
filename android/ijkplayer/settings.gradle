@@ -8,3 +8,4 @@ include ':ijkplayer-exo'
 
 include ':ijkplayer-example'
 
+include ':ijkplayer-cmake'
