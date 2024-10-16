@@ -21,7 +21,7 @@
 
 #include <assert.h>
 #include "libavformat/avformat.h"
-#include "libavformat/url.h"
+#include "libavformat/avio.h"
 #include "libavutil/avstring.h"
 #include "libavutil/log.h"
 #include "libavutil/opt.h"
@@ -46,90 +46,90 @@ static int ijkio_copy_options(IjkAVDictionary **dst, AVDictionary *src) {
     return 0;
 }
 
-static int ijkio_open(URLContext *h, const char *arg, int flags, AVDictionary **options)
-{
-    Context *c = h->priv_data;
-    int ret = -1;
-
-    if (!c || !c->io_manager_ctx_intptr)
-        return -1;
-
-    IjkIOManagerContext *manager_ctx = (IjkIOManagerContext *)av_dict_strtoptr(c->io_manager_ctx_intptr);
-    manager_ctx->ijkio_interrupt_callback = (IjkAVIOInterruptCB *)&(h->interrupt_callback);
-
-    av_strstart(arg, "ijkio:", &arg);
-    IjkAVDictionary *opts = NULL;
-    ijkio_copy_options(&opts, *options);
-
-    manager_ctx->cur_ffmpeg_ctx = c;
-
-    ret = ijkio_manager_io_open(manager_ctx, arg, flags, &opts);
-    ijk_av_dict_free(&opts);
-
-    if (ret != 0) {
-        ijkio_manager_io_close(manager_ctx);
-    }
-
-    return ret;
-}
-
-static int ijkio_read(URLContext *h, unsigned char *buf, int size)
-{
-    Context *c = h->priv_data;
-
-    if (!c || !c->io_manager_ctx_intptr)
-        return -1;
-
-    ((IjkIOManagerContext *)(av_dict_strtoptr(c->io_manager_ctx_intptr)))->cur_ffmpeg_ctx  = c;
-    return ijkio_manager_io_read((IjkIOManagerContext *)(av_dict_strtoptr(c->io_manager_ctx_intptr)), buf, size);
-}
-
-static int64_t ijkio_seek(URLContext *h, int64_t offset, int whence)
-{
-    Context *c = h->priv_data;
-
-    if (!c || !c->io_manager_ctx_intptr)
-        return -1;
-
-    ((IjkIOManagerContext *)(av_dict_strtoptr(c->io_manager_ctx_intptr)))->cur_ffmpeg_ctx  = c;
-    return ijkio_manager_io_seek((IjkIOManagerContext *)(av_dict_strtoptr(c->io_manager_ctx_intptr)), offset, whence);
-}
-
-static int ijkio_close(URLContext *h)
-{
-    Context *c = h->priv_data;
-
-    if (!c || !c->io_manager_ctx_intptr)
-        return -1;
-
-    ((IjkIOManagerContext *)(av_dict_strtoptr(c->io_manager_ctx_intptr)))->cur_ffmpeg_ctx  = c;
-    return ijkio_manager_io_close((IjkIOManagerContext *)(av_dict_strtoptr(c->io_manager_ctx_intptr)));
-}
-
-#define OFFSET(x) offsetof(Context, x)
-#define D AV_OPT_FLAG_DECODING_PARAM
-
-static const AVOption options[] = {
-    { "ijkiomanager", "IjkIOManagerContext", OFFSET(io_manager_ctx_intptr), AV_OPT_TYPE_STRING, { .i64 = 0 }, 0, 0, .flags = D },
-    { NULL }
-};
+//static int ijkio_open(AVIOContext *h, const char *arg, int flags, AVDictionary **options)
+//{
+//    Context *c = h->;
+//    int ret = -1;
+//
+//    if (!c || !c->io_manager_ctx_intptr)
+//        return -1;
+//
+//    IjkIOManagerContext *manager_ctx = (IjkIOManagerContext *)av_dict_strtoptr(c->io_manager_ctx_intptr);
+//    manager_ctx->ijkio_interrupt_callback = (IjkAVIOInterruptCB *)&(h->interrupt_callback);
+//
+//    av_strstart(arg, "ijkio:", &arg);
+//    IjkAVDictionary *opts = NULL;
+//    ijkio_copy_options(&opts, *options);
+//
+//    manager_ctx->cur_ffmpeg_ctx = c;
+//
+//    ret = ijkio_manager_io_open(manager_ctx, arg, flags, &opts);
+//    ijk_av_dict_free(&opts);
+//
+//    if (ret != 0) {
+//        ijkio_manager_io_close(manager_ctx);
+//    }
+//
+//    return ret;
+//}
+//
+//static int ijkio_read(URLContext *h, unsigned char *buf, int size)
+//{
+//    Context *c = h->priv_data;
+//
+//    if (!c || !c->io_manager_ctx_intptr)
+//        return -1;
+//
+//    ((IjkIOManagerContext *)(av_dict_strtoptr(c->io_manager_ctx_intptr)))->cur_ffmpeg_ctx  = c;
+//    return ijkio_manager_io_read((IjkIOManagerContext *)(av_dict_strtoptr(c->io_manager_ctx_intptr)), buf, size);
+//}
+//
+//static int64_t ijkio_seek(URLContext *h, int64_t offset, int whence)
+//{
+//    Context *c = h->priv_data;
+//
+//    if (!c || !c->io_manager_ctx_intptr)
+//        return -1;
+//
+//    ((IjkIOManagerContext *)(av_dict_strtoptr(c->io_manager_ctx_intptr)))->cur_ffmpeg_ctx  = c;
+//    return ijkio_manager_io_seek((IjkIOManagerContext *)(av_dict_strtoptr(c->io_manager_ctx_intptr)), offset, whence);
+//}
+//
+//static int ijkio_close(URLContext *h)
+//{
+//    Context *c = h->priv_data;
+//
+//    if (!c || !c->io_manager_ctx_intptr)
+//        return -1;
+//
+//    ((IjkIOManagerContext *)(av_dict_strtoptr(c->io_manager_ctx_intptr)))->cur_ffmpeg_ctx  = c;
+//    return ijkio_manager_io_close((IjkIOManagerContext *)(av_dict_strtoptr(c->io_manager_ctx_intptr)));
+//}
+//
+//#define OFFSET(x) offsetof(Context, x)
+//#define D AV_OPT_FLAG_DECODING_PARAM
+//
+//static const AVOption options[] = {
+//    { "ijkiomanager", "IjkIOManagerContext", OFFSET(io_manager_ctx_intptr), AV_OPT_TYPE_STRING, { .i64 = 0 }, 0, 0, .flags = D },
+//    { NULL }
+//};
 
 #undef D
 #undef OFFSET
+//
+//static const AVClass ijkio_context_class = {
+//    .class_name = "IjkIo",
+//    .item_name  = av_default_item_name,
+//    .option     = options,
+//    .version    = LIBAVUTIL_VERSION_INT,
+//};
 
-static const AVClass ijkio_context_class = {
-    .class_name = "IjkIo",
-    .item_name  = av_default_item_name,
-    .option     = options,
-    .version    = LIBAVUTIL_VERSION_INT,
-};
-
-URLProtocol ijkimp_ff_ijkio_protocol = {
-    .name                = "ijkio",
-    .url_open2           = ijkio_open,
-    .url_read            = ijkio_read,
-    .url_seek            = ijkio_seek,
-    .url_close           = ijkio_close,
-    .priv_data_size      = sizeof(Context),
-    .priv_data_class     = &ijkio_context_class,
-};
+//URLProtocol ijkimp_ff_ijkio_protocol = {
+//    .name                = "ijkio",
+//    .url_open2           = ijkio_open,
+//    .url_read            = ijkio_read,
+//    .url_seek            = ijkio_seek,
+//    .url_close           = ijkio_close,
+//    .priv_data_size      = sizeof(Context),
+//    .priv_data_class     = &ijkio_context_class,
+//};

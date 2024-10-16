@@ -18,15 +18,17 @@
  * License along with ijkPlayer; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
-#include "libavformat/url.h"
+//#include "libavformat/url.h"
 #include "libavutil/avstring.h"
 #include "ijkplayer/ijkavutil/ijkutils.h"
 #include "ijkiourl.h"
+#include "libavutil/dict.h"
+#include "libavformat/avio.h"
 
 #include <stdint.h>
 
 typedef struct IjkIOFFioContext {
-    URLContext *inner;
+    AVIOContext *inner;
 } IjkIOFFioContext;
 
 static int ijkio_copy_options(AVDictionary **dst, IjkAVDictionary *src) {
@@ -53,8 +55,8 @@ static int ijkio_ffio_open(IjkURLContext *h, const char *url, int flags, IjkAVDi
 
     av_strstart(url, "ffio:", &url);
     if (h->ijkio_app_ctx) {
-        ret = ffurl_open_whitelist(&c->inner, url, flags, (AVIOInterruptCB *)h->ijkio_app_ctx->ijkio_interrupt_callback,
-                                &opts, NULL, NULL, NULL);
+        ret = avio_open2(&c->inner, url, flags, (AVIOInterruptCB *)h->ijkio_app_ctx->ijkio_interrupt_callback,
+                                &opts);
     } else {
         ret = -1;
     }
@@ -72,7 +74,7 @@ static int ijkio_ffio_read(IjkURLContext *h, unsigned char *buf, int size) {
     if (!c || !c->inner)
         return -1;
 
-    return ffurl_read(c->inner, buf, size);
+    return avio_read(c->inner, buf, size);
 }
 
 static int64_t ijkio_ffio_seek(IjkURLContext *h, int64_t offset, int whence) {
@@ -84,7 +86,7 @@ static int64_t ijkio_ffio_seek(IjkURLContext *h, int64_t offset, int whence) {
     if (!c || !c->inner)
         return -1;
 
-    return ffurl_seek(c->inner, offset, whence);
+    return avio_seek(c->inner, offset, whence);
 }
 
 static int ijkio_ffio_close(IjkURLContext *h) {
@@ -96,7 +98,7 @@ static int ijkio_ffio_close(IjkURLContext *h) {
     if (!c || !c->inner)
         return -1;
 
-    return ffurl_close(c->inner);
+    return avio_close(c->inner);
 }
 
 IjkURLProtocol ijkio_ffio_protocol = {

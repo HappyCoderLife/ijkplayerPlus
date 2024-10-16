@@ -1202,7 +1202,7 @@ JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved)
     ijkmp_global_set_inject_callback(inject_callback);
 
     FFmpegApi_global_init(env);
-
+    JNI_OnLoad_SDL(vm,reserved);
     return JNI_VERSION_1_4;
 }
 

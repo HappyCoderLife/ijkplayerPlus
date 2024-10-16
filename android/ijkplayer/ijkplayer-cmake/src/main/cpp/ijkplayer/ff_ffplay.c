@@ -523,7 +523,9 @@ static int convert_image(FFPlayer *ffp, AVFrame *src_frame, int64_t src_frame_pt
         goto fail2;
     }
 
-    ret = avcodec_encode_video2(img_info->frame_img_codec_ctx, &avpkt, dst_frame, &got_packet);
+    ret=avcodec_send_frame(img_info->frame_img_codec_ctx,dst_frame);
+    ret= avcodec_receive_packet(img_info->frame_img_codec_ctx,&avpkt);
+//    ret = avcodec_encode_video2(img_info->frame_img_codec_ctx, &avpkt, dst_frame, &got_packet);
 
     if (ret >= 0 && got_packet > 0) {
         strcpy(file_path, img_info->img_path);
@@ -591,7 +593,7 @@ static int decoder_decode_frame(FFPlayer *ffp, Decoder *d, AVFrame *frame, AVSub
                         if (ret >= 0) {
                             AVRational tb = (AVRational){1, frame->sample_rate};
                             if (frame->pts != AV_NOPTS_VALUE)
-                                frame->pts = av_rescale_q(frame->pts, av_codec_get_pkt_timebase(d->avctx), tb);
+                                frame->pts = av_rescale_q(frame->pts, d->avctx->time_base, tb);
                             else if (d->next_pts != AV_NOPTS_VALUE)
                                 frame->pts = av_rescale_q(d->next_pts, d->next_pts_tb, tb);
                             if (frame->pts != AV_NOPTS_VALUE) {
@@ -2827,8 +2829,8 @@ static int stream_component_open(FFPlayer *ffp, int stream_index)
     ret = avcodec_parameters_to_context(avctx, ic->streams[stream_index]->codecpar);
     if (ret < 0)
         goto fail;
-    av_codec_set_pkt_timebase(avctx, ic->streams[stream_index]->time_base);
-
+//    av_codec_set_pkt_timebase(avctx, ic->streams[stream_index]->time_base);
+    avctx->time_base=ic->streams[stream_index]->time_base;
     codec = avcodec_find_decoder(avctx->codec_id);
 
     switch (avctx->codec_type) {
@@ -2849,12 +2851,13 @@ static int stream_component_open(FFPlayer *ffp, int stream_index)
     }
 
     avctx->codec_id = codec->id;
-    if(stream_lowres > av_codec_get_max_lowres(codec)){
+    if(stream_lowres > codec->max_lowres){
         av_log(avctx, AV_LOG_WARNING, "The maximum value for lowres supported by the decoder is %d\n",
-                av_codec_get_max_lowres(codec));
-        stream_lowres = av_codec_get_max_lowres(codec);
+               codec->max_lowres);
+        stream_lowres = codec->max_lowres;
     }
-    av_codec_set_lowres(avctx, stream_lowres);
+    avctx->lowres=stream_lowres;
+//    av_codec_set_lowres(avctx, stream_lowres);
 
 #if FF_API_EMU_EDGE
     if(stream_lowres) avctx->flags |= CODEC_FLAG_EMU_EDGE;
@@ -3049,8 +3052,8 @@ static int is_realtime(AVFormatContext *s)
     )
         return 1;
 
-    if(s->pb && (   !strncmp(s->filename, "rtp:", 4)
-                 || !strncmp(s->filename, "udp:", 4)
+    if(s->pb && (   !strncmp(s->url, "rtp:", 4)
+                 || !strncmp(s->url, "udp:", 4)
                 )
     )
         return 1;
@@ -3117,8 +3120,8 @@ static int read_thread(void *arg)
     if (ffp->iformat_name)
         is->iformat = av_find_input_format(ffp->iformat_name);
 
-    av_dict_set_intptr(&ffp->format_opts, "video_cache_ptr", (intptr_t)&ffp->stat.video_cache, 0);
-    av_dict_set_intptr(&ffp->format_opts, "audio_cache_ptr", (intptr_t)&ffp->stat.audio_cache, 0);
+    av_dict_set(&ffp->format_opts, "video_cache_ptr", (char*)&ffp->stat.video_cache, 0);
+    av_dict_set(&ffp->format_opts, "audio_cache_ptr", (char*)&ffp->stat.audio_cache, 0);
     err = avformat_open_input(&ic, is->filename, is->iformat, &ffp->format_opts);
     if (err < 0) {
         print_error(is->filename, err);
@@ -3380,7 +3383,7 @@ static int read_thread(void *arg)
             ret = avformat_seek_file(is->ic, -1, seek_min, seek_target, seek_max, is->seek_flags);
             if (ret < 0) {
                 av_log(NULL, AV_LOG_ERROR,
-                       "%s: error while seeking\n", is->ic->filename);
+                       "%s: error while seeking\n", is->ic->url);
             } else {
                 if (is->audio_stream >= 0) {
                     packet_queue_flush(&is->audioq);
@@ -3774,26 +3777,26 @@ static int video_refresh_thread(void *arg)
     return 0;
 }
 
-static int lockmgr(void **mtx, enum AVLockOp op)
-{
-    switch (op) {
-    case AV_LOCK_CREATE:
-        *mtx = SDL_CreateMutex();
-        if (!*mtx) {
-            av_log(NULL, AV_LOG_FATAL, "SDL_CreateMutex(): %s\n", SDL_GetError());
-            return 1;
-        }
-        return 0;
-    case AV_LOCK_OBTAIN:
-        return !!SDL_LockMutex(*mtx);
-    case AV_LOCK_RELEASE:
-        return !!SDL_UnlockMutex(*mtx);
-    case AV_LOCK_DESTROY:
-        SDL_DestroyMutex(*mtx);
-        return 0;
-    }
-    return 1;
-}
+//static int lockmgr(void **mtx, enum AVLockOp op)
+//{
+//    switch (op) {
+//    case AV_LOCK_CREATE:
+//        *mtx = SDL_CreateMutex();
+//        if (!*mtx) {
+//            av_log(NULL, AV_LOG_FATAL, "SDL_CreateMutex(): %s\n", SDL_GetError());
+//            return 1;
+//        }
+//        return 0;
+//    case AV_LOCK_OBTAIN:
+//        return !!SDL_LockMutex(*mtx);
+//    case AV_LOCK_RELEASE:
+//        return !!SDL_UnlockMutex(*mtx);
+//    case AV_LOCK_DESTROY:
+//        SDL_DestroyMutex(*mtx);
+//        return 0;
+//    }
+//    return 1;
+//}
 
 // FFP_MERGE: main
 
@@ -3872,20 +3875,20 @@ void ffp_global_init()
 
     ALOGD("ijkmediaplayer version : %s", ijkmp_version());
     /* register all codecs, demux and protocols */
-    avcodec_register_all();
+//    avcodec_register_all();
 #if CONFIG_AVDEVICE
     avdevice_register_all();
 #endif
 #if CONFIG_AVFILTER
     avfilter_register_all();
 #endif
-    av_register_all();
+//    av_register_all();
 
     ijkav_register_all();
 
     avformat_network_init();
 
-    av_lockmgr_register(lockmgr);
+//    av_lockmgr_register(lockmgr);
     av_log_set_callback(ffp_log_callback_brief);
 
     av_init_packet(&flush_pkt);
@@ -3899,7 +3902,7 @@ void ffp_global_uninit()
     if (!g_ffmpeg_global_inited)
         return;
 
-    av_lockmgr_register(NULL);
+//    av_lockmgr_register(NULL);
 
     // FFP_MERGE: uninit_opts
 
@@ -3959,7 +3962,7 @@ static void *ffp_context_child_next(void *obj, void *prev)
     return NULL;
 }
 
-static const AVClass *ffp_context_child_class_next(const AVClass *prev)
+static const AVClass *ffp_context_child_class_next( void **prev)
 {
     return NULL;
 }
@@ -3970,7 +3973,7 @@ const AVClass ffp_context_class = {
     .option           = ffp_context_options,
     .version          = LIBAVUTIL_VERSION_INT,
     .child_next       = ffp_context_child_next,
-    .child_class_next = ffp_context_child_class_next,
+    .child_class_iterate = ffp_context_child_class_next,
 };
 
 static const char *ijk_version_info()
@@ -4180,7 +4183,7 @@ void ffp_set_option_intptr(FFPlayer *ffp, int opt_category, const char *name, ui
         return;
 
     AVDictionary **dict = ffp_get_opt_dict(ffp, opt_category);
-    av_dict_set_intptr(dict, name, value, 0);
+    av_dict_set(dict, name, (const char *) value, 0);
 }
 
 void ffp_set_overlay_format(FFPlayer *ffp, int chroma_fourcc)

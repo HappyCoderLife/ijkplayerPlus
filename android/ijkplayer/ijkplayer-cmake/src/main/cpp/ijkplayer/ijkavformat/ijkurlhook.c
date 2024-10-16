@@ -21,22 +21,21 @@
 
 #include <assert.h>
 #include "libavformat/avformat.h"
-#include "libavformat/url.h"
+#include "libavformat/avio.h"
 #include "libavutil/avstring.h"
 #include "libavutil/log.h"
 #include "libavutil/opt.h"
 
-#include "libavutil/application.h"
 
 typedef struct Context {
     AVClass        *class;
-    URLContext     *inner;
+    struct AVIOContext    *inner;
 
     int64_t         logical_pos;
     int64_t         logical_size;
     int             io_error;
 
-    AVAppIOControl  app_io_ctrl;
+//    AVIOContext app_io_ctrl;
     const char     *scheme;
     const char     *inner_scheme;
 
@@ -47,21 +46,21 @@ typedef struct Context {
     int64_t         test_fail_point;
     int64_t         test_fail_point_next;
     char*         app_ctx_intptr;
-    AVApplicationContext *app_ctx;
+//    AVApplicationContext *app_ctx;
 } Context;
 
-static int ijkurlhook_call_inject(URLContext *h)
+static int ijkurlhook_call_inject(AVFormatContext *h)
 {
     Context *c = h->priv_data;
     int ret = 0;
 
-    if (ff_check_interrupt(&h->interrupt_callback)) {
-        ret = AVERROR_EXIT;
-        goto fail;
-    }
+//    if (ff_check_interrupt(&h->interrupt_callback)) {
+//        ret = AVERROR_EXIT;
+//        goto fail;
+//    }
 
     if (c->app_ctx) {
-        AVAppIOControl control_data_backup = c->app_io_ctrl;
+        AVIOContext control_data_backup = c->app_io_ctrl;
 
         c->app_io_ctrl.is_handled = 0;
         c->app_io_ctrl.is_url_changed = 0;
@@ -88,11 +87,11 @@ fail:
     return ret;
 }
 
-static int ijkurlhook_reconnect(URLContext *h, AVDictionary *extra)
+static int ijkurlhook_reconnect(struct AVFormatContext *h, AVDictionary *extra)
 {
     Context *c = h->priv_data;
     int ret = 0;
-    URLContext *new_url = NULL;
+    AVFormatContext *new_url = NULL;
     AVDictionary *inner_options = NULL;
 
     c->test_fail_point_next += c->test_fail_point;
@@ -102,14 +101,12 @@ static int ijkurlhook_reconnect(URLContext *h, AVDictionary *extra)
     if (extra)
         av_dict_copy(&inner_options, extra, 0);
 
-    ret = ffurl_open_whitelist(&new_url,
+    ret = avio_open2(&new_url,
                                c->app_io_ctrl.url,
                                c->inner_flags,
                                &h->interrupt_callback,
                                &inner_options,
-                               h->protocol_whitelist,
-                               h->protocol_blacklist,
-                               h);
+                             );
     if (ret)
         goto fail;
 
@@ -177,12 +174,12 @@ fail:
     return ret;
 }
 
-static int ijkurlhook_close(URLContext *h)
+static int ijkurlhook_close(AVFormatContext *h)
 {
     Context *c = h->priv_data;
 
     av_dict_free(&c->inner_options);
-    return ffurl_closep(&c->inner);
+    return avio_close(&c->inner);
 }
 
 static int ijkurlhook_read(URLContext *h, unsigned char *buf, int size)

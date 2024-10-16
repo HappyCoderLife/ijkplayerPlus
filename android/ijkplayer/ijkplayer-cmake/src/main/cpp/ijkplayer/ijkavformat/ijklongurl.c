@@ -28,7 +28,7 @@
 
 typedef struct Context {
     AVClass        *class;
-    URLContext     *inner;
+    struct URLContext     *inner;
 
     /* options */
     char           *url;

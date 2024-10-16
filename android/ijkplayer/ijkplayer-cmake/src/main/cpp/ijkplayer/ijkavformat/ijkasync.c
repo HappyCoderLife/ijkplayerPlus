@@ -34,12 +34,12 @@
 #include "libavutil/fifo.h"
 #include "libavutil/log.h"
 #include "libavutil/opt.h"
-#include "libavutil/thread.h"
+//#include "libavutil/thread.h"
 #include "libavutil/time.h"
-#include "libavformat/url.h"
+//#include "libavformat/url.h"
 #include <stdint.h>
 
-#include "libavutil/application.h"
+//#include "libavutil/application.h"
 
 #if HAVE_UNISTD_H
 #include <unistd.h>
@@ -57,7 +57,7 @@ typedef struct RingBuffer
 
 typedef struct Context {
     AVClass        *class;
-    URLContext     *inner;
+//    URLContext     *inner;
 
     int             seek_request;
     int64_t         seek_pos;
@@ -308,8 +308,8 @@ static int async_open(URLContext *h, const char *arg, int flags, AVDictionary **
         goto fifo_fail;
 
     if (c->app_ctx_intptr) {
-        c->app_ctx = (AVApplicationContext *)av_dict_strtoptr(c->app_ctx_intptr);
-        av_dict_set_intptr(options, "ijkapplication", (uintptr_t )c->app_ctx, 0);
+//        c->app_ctx = (AVApplicationContext *)av_dict_strtoptr(c->app_ctx_intptr);
+//        av_dict_set_intptr(options, "ijkapplication", (uintptr_t )c->app_ctx, 0);
     }
     /* wrap interrupt callback */
     c->interrupt_callback = h->interrupt_callback;

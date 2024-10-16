@@ -22,7 +22,7 @@
  */
 
 #include "libavformat/avformat.h"
-#include "libavformat/url.h"
+//#include "libavformat/url.h"
 #include "libavformat/version.h"
 
 #define IJK_REGISTER_DEMUXER(x)                                         \
@@ -44,7 +44,7 @@ static struct AVInputFormat *ijkav_find_input_format(const char *iformat_name)
     AVInputFormat *fmt = NULL;
     if (!iformat_name)
         return NULL;
-    while ((fmt = av_iformat_next(fmt))) {
+    while ((fmt = (AVInputFormat *)av_demuxer_iterate((void**)fmt))) {
         if (!fmt->name)
             continue;
         if (!strcmp(iformat_name, fmt->name))
@@ -59,7 +59,7 @@ static void ijkav_register_input_format(AVInputFormat *iformat)
         av_log(NULL, AV_LOG_WARNING, "skip     demuxer : %s (duplicated)\n", iformat->name);
     } else {
         av_log(NULL, AV_LOG_INFO,    "register demuxer : %s\n", iformat->name);
-        av_register_input_format(iformat);
+//        av_register_input_format(iformat);
     }
 }
 
@@ -72,7 +72,7 @@ void ijkav_register_all(void)
         return;
     initialized = 1;
 
-    av_register_all();
+//    av_register_all();
 
     /* protocols */
     av_log(NULL, AV_LOG_INFO, "===== custom modules begin =====\n");

@@ -20,12 +20,13 @@
  */
 
 #include <assert.h>
+#include <bits/seek_constants.h>
 #include "ijkiourl.h"
 #include "ijkioprotocol.h"
 #include "ijkplayer/ijkavutil/ijkutils.h"
 #include "libavutil/log.h"
 
-#include "libavutil/application.h"
+//#include "libavutil/application.h"
 
 typedef struct Context {
     IjkURLContext   *inner;
@@ -34,7 +35,7 @@ typedef struct Context {
     int64_t         logical_size;
     int             io_error;
 
-    AVAppIOControl  app_io_ctrl;
+//    AVAppIOControl  app_io_ctrl;
     const char     *scheme;
     const char     *inner_scheme;
     IjkAVIOInterruptCB *ijkio_interrupt_callback;
@@ -46,7 +47,7 @@ typedef struct Context {
     int64_t         test_fail_point;
     int64_t         test_fail_point_next;
     int             abort_request;
-    AVApplicationContext *app_ctx;
+//    AVApplicationContext *app_ctx;
     IjkIOApplicationContext *ijkio_app_ctx;
 } Context;
 
@@ -80,33 +81,33 @@ static int ijkio_urlhook_call_inject(IjkURLContext *h)
         goto fail;
     }
 
-    if (c->app_ctx) {
-        AVAppIOControl control_data_backup = c->app_io_ctrl;
-
-        c->app_io_ctrl.is_handled = 0;
-        c->app_io_ctrl.is_url_changed = 0;
-        ret = av_application_on_io_control(c->app_ctx, AVAPP_CTRL_WILL_HTTP_OPEN, &c->app_io_ctrl);
-        if (ret || !c->app_io_ctrl.url[0]) {
-            ret = IJKAVERROR_EXIT;
-            goto fail;
-        }
-
-        AVAppIOControl user_control_data = c->app_io_ctrl;
-        if (strncmp(c->app_io_ctrl.url, "ffio:", strlen("ffio:"))) {
-            snprintf(c->app_io_ctrl.url, sizeof(c->app_io_ctrl.url), "%s%s", "ffio:", user_control_data.url);
-        }
-
-        if (!c->app_io_ctrl.is_url_changed && strcmp(control_data_backup.url, c->app_io_ctrl.url)) {
-            // force a url compare
-            c->app_io_ctrl.is_url_changed = 1;
-        }
-
-        av_log(NULL, AV_LOG_INFO, "%s %s (%s)\n", h->prot->name, c->app_io_ctrl.url, c->app_io_ctrl.is_url_changed ? "changed" : "remain");
-    }
+//    if (c->app_ctx) {
+//        AVAppIOControl control_data_backup = c->app_io_ctrl;
+//
+//        c->app_io_ctrl.is_handled = 0;
+//        c->app_io_ctrl.is_url_changed = 0;
+//        ret = av_application_on_io_control(c->app_ctx, AVAPP_CTRL_WILL_HTTP_OPEN, &c->app_io_ctrl);
+//        if (ret || !c->app_io_ctrl.url[0]) {
+//            ret = IJKAVERROR_EXIT;
+//            goto fail;
+//        }
+//
+//        AVAppIOControl user_control_data = c->app_io_ctrl;
+//        if (strncmp(c->app_io_ctrl.url, "ffio:", strlen("ffio:"))) {
+//            snprintf(c->app_io_ctrl.url, sizeof(c->app_io_ctrl.url), "%s%s", "ffio:", user_control_data.url);
+//        }
+//
+//        if (!c->app_io_ctrl.is_url_changed && strcmp(control_data_backup.url, c->app_io_ctrl.url)) {
+//            // force a url compare
+//            c->app_io_ctrl.is_url_changed = 1;
+//        }
+//
+//        av_log(NULL, AV_LOG_INFO, "%s %s (%s)\n", h->prot->name, c->app_io_ctrl.url, c->app_io_ctrl.is_url_changed ? "changed" : "remain");
+//    }
 
     if (ijkio_cache_check_interrupt(h)) {
         ret = IJKAVERROR_EXIT;
-        av_log(NULL, AV_LOG_ERROR, "%s %s (%s)\n", h->prot->name, c->app_io_ctrl.url, c->app_io_ctrl.is_url_changed ? "changed" : "remain");
+//        av_log(NULL, AV_LOG_ERROR, "%s %s (%s)\n", h->prot->name, c->app_io_ctrl.url, c->app_io_ctrl.is_url_changed ? "changed" : "remain");
         goto fail;
     }
 
@@ -128,12 +129,12 @@ static int ijkio_urlhook_reconnect(IjkURLContext *h, IjkAVDictionary *extra)
     if (extra)
         ijk_av_dict_copy(&inner_options, extra, 0);
 
-    ret = ijkio_alloc_url(&new_url, c->app_io_ctrl.url);
+//    ret = ijkio_alloc_url(&new_url, c->app_io_ctrl.url);
     new_url->ijkio_app_ctx = c->ijkio_app_ctx;
     if (ret)
         goto fail0;
 
-    ret = new_url->prot->url_open2(new_url, c->app_io_ctrl.url, c->inner_flags, &inner_options);
+//    ret = new_url->prot->url_open2(new_url, c->app_io_ctrl.url, c->inner_flags, &inner_options);
     if (ret)
         goto fail1;
 
@@ -144,7 +145,7 @@ static int ijkio_urlhook_reconnect(IjkURLContext *h, IjkAVDictionary *extra)
     }
 
     c->inner        = new_url;
-    c->logical_pos  = c->inner->prot->url_seek(c->inner, 0, SEEK_CUR);
+    c->logical_pos  = c->inner->prot->url_seek(c->inner, 0, 1);
     c->logical_size = c->inner->prot->url_seek(c->inner, 0, IJKAVSEEK_SIZE);
     c->io_error     = 0;
     if (inner_options) {
@@ -174,14 +175,14 @@ static int ijkio_urlhook_init(IjkURLContext *h, const char *arg, int flags, IjkA
     if (options)
         ijk_av_dict_copy(&c->inner_options, *options, 0);
 
-    ijk_av_dict_set_intptr(&c->inner_options, "ijkapplication", (uintptr_t )c->app_ctx, 0);
-    ijk_av_dict_set_int(&c->inner_options, "ijkinject-segment-index", c->segment_index, 0);
-
-    c->app_io_ctrl.size = sizeof(c->app_io_ctrl);
-    c->app_io_ctrl.segment_index = c->segment_index;
-    c->app_io_ctrl.retry_counter = 0;
-
-    snprintf(c->app_io_ctrl.url, sizeof(c->app_io_ctrl.url), "%s", arg);
+//    ijk_av_dict_set_intptr(&c->inner_options, "ijkapplication", (uintptr_t )c->app_ctx, 0);
+//    ijk_av_dict_set_int(&c->inner_options, "ijkinject-segment-index", c->segment_index, 0);
+//
+//    c->app_io_ctrl.size = sizeof(c->app_io_ctrl);
+//    c->app_io_ctrl.segment_index = c->segment_index;
+//    c->app_io_ctrl.retry_counter = 0;
+//
+//    snprintf(c->app_io_ctrl.url, sizeof(c->app_io_ctrl.url), "%s", arg);
 
     return ret;
 }
@@ -212,7 +213,7 @@ static int ijkio_urlhook_read(IjkURLContext *h, unsigned char *buf, int size)
         return c->io_error;
 
     if (c->test_fail_point_next > 0 && c->logical_pos >= c->test_fail_point_next) {
-        av_log(NULL, AV_LOG_ERROR, "test fail point:%"PRId64"\n", c->test_fail_point_next);
+//        av_log(NULL, AV_LOG_ERROR, "test fail point:%"PRId64"\n", c->test_fail_point_next);
         c->io_error = IJKAVERROR(EIO);
         return IJKAVERROR(EIO);
     }
@@ -264,22 +265,22 @@ static int ijkio_httphook_open(IjkURLContext *h, const char *arg, int flags, Ijk
     IjkAVDictionaryEntry *t = NULL;
     c->ijkio_app_ctx = h->ijkio_app_ctx;
     c->ijkio_interrupt_callback = h->ijkio_app_ctx->ijkio_interrupt_callback;
+//
+//    c->app_ctx = (AVApplicationContext *)ijk_av_dict_get_intptr(*options, "ijkapplication");
+//
+//    if (!c->app_ctx) {
+//        goto fail;
+//    }
+//
+//    t = ijk_av_dict_get(*options, "ijkinject-segment-index", NULL, IJK_AV_DICT_MATCH_CASE);
+//    if (t) {
+//        c->segment_index = (int)strtoll(t->value, NULL, 10);
+//    }
 
-    c->app_ctx = (AVApplicationContext *)ijk_av_dict_get_intptr(*options, "ijkapplication");
-
-    if (!c->app_ctx) {
-        goto fail;
-    }
-
-    t = ijk_av_dict_get(*options, "ijkinject-segment-index", NULL, IJK_AV_DICT_MATCH_CASE);
-    if (t) {
-        c->segment_index = (int)strtoll(t->value, NULL, 10);
-    }
-
-    t = ijk_av_dict_get(*options, "ijkhttphook-test-fail-point", NULL, IJK_AV_DICT_MATCH_CASE);
-    if (t) {
-        c->test_fail_point = (int64_t)strtoll(t->value, NULL, 10);
-    }
+//    t = ijk_av_dict_get(*options, "ijkhttphook-test-fail-point", NULL, IJK_AV_DICT_MATCH_CASE);
+//    if (t) {
+//        c->test_fail_point = (int64_t)strtoll(t->value, NULL, 10);
+//    }
     ijk_av_strstart(arg, "httphook:", &arg);
     ret = ijkio_urlhook_init(h, arg, flags, options);
     if (ret)
@@ -299,15 +300,15 @@ static int ijkio_httphook_open(IjkURLContext *h, const char *arg, int flags, Ijk
                 goto fail;
         }
 
-        c->app_io_ctrl.retry_counter++;
+//        c->app_io_ctrl.retry_counter++;
         inject_ret = ijkio_urlhook_call_inject(h);
         if (inject_ret) {
             ret = IJKAVERROR_EXIT;
             goto fail;
         }
 
-        if (!c->app_io_ctrl.is_handled)
-            goto fail;
+//        if (!c->app_io_ctrl.is_handled)
+//            goto fail;
 
         av_log(NULL, AV_LOG_INFO, "%s: will reconnect at start\n", __func__);
         ret = ijkio_httphook_reconnect_at(h, 0);
@@ -324,7 +325,7 @@ static int ijkio_httphook_read(IjkURLContext *h, unsigned char *buf, int size)
     int ret = 0;
     int active_reconnect = c->ijkio_app_ctx->active_reconnect;
 
-    c->app_io_ctrl.retry_counter = 0;
+//    c->app_io_ctrl.retry_counter = 0;
 
     if (active_reconnect == 0) {
         ret = ijkio_urlhook_read(h, buf, size);
@@ -336,18 +337,18 @@ static int ijkio_httphook_read(IjkURLContext *h, unsigned char *buf, int size)
                 goto fail;
         }
 
-        c->app_io_ctrl.retry_counter++;
-        ret = ijkio_urlhook_call_inject(h);
-        c->ijkio_app_ctx->active_reconnect = active_reconnect = 0;
-        if (ret)
-            goto fail;
+//        c->app_io_ctrl.retry_counter++;
+//        ret = ijkio_urlhook_call_inject(h);
+//        c->ijkio_app_ctx->active_reconnect = active_reconnect = 0;
+//        if (ret)
+//            goto fail;
+//
+//        if (!c->app_io_ctrl.is_handled)
+//            goto fail;
 
-        if (!c->app_io_ctrl.is_handled)
-            goto fail;
-
-        av_log(NULL, AV_LOG_INFO, "%s: will reconnect(%d) at %"PRId64"\n", __func__, c->app_io_ctrl.retry_counter, c->logical_pos);
+//        av_log(NULL, AV_LOG_INFO, "%s: will reconnect(%d) at %"PRId64"\n", __func__, c->app_io_ctrl.retry_counter, c->logical_pos);
         ret = ijkio_httphook_reconnect_at(h, c->logical_pos);
-        av_log(NULL, AV_LOG_INFO, "%s: did reconnect(%d) at %"PRId64": %d\n", __func__, c->app_io_ctrl.retry_counter, c->logical_pos, ret);
+//        av_log(NULL, AV_LOG_INFO, "%s: did reconnect(%d) at %"PRId64": %d\n", __func__, c->app_io_ctrl.retry_counter, c->logical_pos, ret);
         if (ret < 0)
             continue;
 
@@ -402,35 +403,35 @@ static int64_t ijkio_httphook_seek(IjkURLContext *h, int64_t pos, int whence)
     else if ((c->logical_size < 0 && whence == SEEK_END))
         return IJKAVERROR(ENOSYS);
 
-    c->app_io_ctrl.retry_counter = 0;
-    ret = ijkio_urlhook_call_inject(h);
-    if (ret) {
-        ret = IJKAVERROR_EXIT;
-        goto fail;
-    }
+//    c->app_io_ctrl.retry_counter = 0;
+//    ret = ijkio_urlhook_call_inject(h);
+//    if (ret) {
+//        ret = IJKAVERROR_EXIT;
+//        goto fail;
+//    }
 
-    seek_ret = ijkio_httphook_reseek_at(h, pos, whence, c->app_io_ctrl.is_url_changed);
-    while (seek_ret < 0 && c->abort_request == 0) {
-        switch (seek_ret) {
-            case IJKAVERROR_EXIT:
-            case IJKAVERROR_EOF:
-                goto fail;
-        }
+//    seek_ret = ijkio_httphook_reseek_at(h, pos, whence, c->app_io_ctrl.is_url_changed);
+//    while (seek_ret < 0 && c->abort_request == 0) {
+//        switch (seek_ret) {
+//            case IJKAVERROR_EXIT:
+//            case IJKAVERROR_EOF:
+//                goto fail;
+//        }
 
-        c->app_io_ctrl.retry_counter++;
-        ret = ijkio_urlhook_call_inject(h);
-        if (ret) {
-            ret = IJKAVERROR_EXIT;
-            goto fail;
-        }
+//        c->app_io_ctrl.retry_counter++;
+//        ret = ijkio_urlhook_call_inject(h);
+//        if (ret) {
+//            ret = IJKAVERROR_EXIT;
+//            goto fail;
+//        }
+//
+//        if (!c->app_io_ctrl.is_handled)
+//            goto fail;
 
-        if (!c->app_io_ctrl.is_handled)
-            goto fail;
-
-        av_log(NULL, AV_LOG_INFO, "%s: will reseek(%d) at pos=%"PRId64", whence=%d\n", __func__, c->app_io_ctrl.retry_counter, pos, whence);
-        seek_ret = ijkio_httphook_reseek_at(h, pos, whence, c->app_io_ctrl.is_url_changed);
-        av_log(NULL, AV_LOG_INFO, "%s: did reseek(%d) at pos=%"PRId64", whence=%d: %"PRId64"\n", __func__, c->app_io_ctrl.retry_counter, pos, whence, seek_ret);
-    }
+//        av_log(NULL, AV_LOG_INFO, "%s: will reseek(%d) at pos=%"PRId64", whence=%d\n", __func__, c->app_io_ctrl.retry_counter, pos, whence);
+//        seek_ret = ijkio_httphook_reseek_at(h, pos, whence, c->app_io_ctrl.is_url_changed);
+//        av_log(NULL, AV_LOG_INFO, "%s: did reseek(%d) at pos=%"PRId64", whence=%d: %"PRId64"\n", __func__, c->app_io_ctrl.retry_counter, pos, whence, seek_ret);
+//    }
 
     if (c->test_fail_point)
         c->test_fail_point_next = c->logical_pos + c->test_fail_point;

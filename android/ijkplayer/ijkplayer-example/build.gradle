@@ -38,11 +38,11 @@ dependencies {
     implementation project(':ijkplayer-exo')
 
 
-    implementation project(':ijkplayer-armv5')
-    implementation project(':ijkplayer-armv7a')
-    implementation project(':ijkplayer-arm64')
-    implementation project(':ijkplayer-x86')
-    implementation project(':ijkplayer-x86_64')
+//    implementation project(':ijkplayer-armv5')
+//    implementation project(':ijkplayer-armv7a')
+//    implementation project(':ijkplayer-arm64')
+//    implementation project(':ijkplayer-x86')
+    implementation project(':ijkplayer-cmake')
 
     // implementation 'tv.danmaku.ijk.media:ijkplayer-java:0.8.8'
     // implementation 'tv.danmaku.ijk.media:ijkplayer-exo:0.8.8'
